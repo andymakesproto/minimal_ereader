@@ -1,0 +1,95 @@
+#include <Arduino.h>
+#include <vector>
+#include "DisplayController.h"
+#include "StorageManager.h"
+#include "BookParser.h"
+#include "InputController.h"
+
+DisplayController display;
+StorageManager storage;
+BookParser parser;
+InputController input;
+
+bool bookLoaded = false;
+uint32_t currentOffset = 0;  // Where the current page starts
+uint32_t nextOffset = 0;     // Where the next page starts
+std::vector<uint32_t> pageHistory; // Memory of previous page offsets
+
+void drawCurrentPage(bool fastRefresh) {
+    if (!bookLoaded) return;
+    
+    parser.setCurrentOffset(currentOffset);
+    String rawChunk = parser.getRawChunk();
+    
+    if (rawChunk.length() == 0) {
+        display.printTextFast("End of book.");
+        return;
+    }
+
+    // Draw the text and find out exactly how many bytes the screen ate
+    uint32_t bytesDrawn = display.printPageDynamic(rawChunk, fastRefresh);
+    
+    // Calculate the starting point for the *next* page
+    nextOffset = currentOffset + bytesDrawn;
+}
+
+void navigateForward() {
+    if (!bookLoaded || nextOffset <= currentOffset) return;
+    
+    // Save where we are before we move forward
+    pageHistory.push_back(currentOffset);
+    
+    currentOffset = nextOffset;
+    drawCurrentPage(true); // Fast refresh
+}
+
+void navigateBackward() {
+    if (!bookLoaded || pageHistory.empty()) return;
+    
+    // Retrieve the last known offset from history
+    currentOffset = pageHistory.back();
+    pageHistory.pop_back(); // Remove it so we don't get stuck
+    
+    drawCurrentPage(true); // Fast refresh
+}
+
+void setup() {
+    Serial.begin(115200);
+    delay(2000);
+    
+    display.begin();
+    display.clear(); 
+    input.begin();
+    
+    if (storage.begin()) {
+        std::vector<String> books = storage.listTextFiles();
+        if (books.size() > 0) {
+            if (parser.openBook(books[0], 0)) {
+                bookLoaded = true;
+                // Draw page 1 with a full deep clean
+                drawCurrentPage(false); 
+            }
+        }
+    }
+
+    input.setEventCallback([](int btnId, int eventType) {
+        if (eventType == EVENT_CLICK) {
+            if (btnId == BTN_1) {
+                Serial.println("BTN 1: Backward");
+                navigateBackward();
+            } 
+            else if (btnId == BTN_2) {
+                Serial.println("BTN 2: Forward");
+                navigateForward();
+            } 
+            else if (btnId == BTN_4) {
+                Serial.println("BTN 4: Deep Clean");
+                drawCurrentPage(false); // Slow flash, same page
+            }
+        }
+    });
+}
+
+void loop() {
+    input.update();
+}

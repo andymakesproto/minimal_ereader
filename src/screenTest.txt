@@ -1,0 +1,22 @@
+#include <Arduino.h>
+#include "DisplayController.h"
+
+DisplayController display;
+
+void setup() {
+    Serial.begin(115200);
+    delay(2000);
+    
+    Serial.println("Booting Display...");
+    display.begin();
+    
+    Serial.println("Clearing screen...");
+    display.clear();
+    
+    Serial.println("Printing test text...");
+    display.printText("Hello from the \nDisplay Controller!\n\nSPI mapping is working.");
+}
+
+void loop() {
+    // Nothing to do here for a display test
+}

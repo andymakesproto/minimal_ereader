@@ -1,0 +1,35 @@
+#include "DisplayController.h"
+#include "StorageManager.h"
+
+DisplayController display;
+StorageManager storage;
+
+void setup() {
+    Serial.begin(115200);
+    delay(2000);
+    
+    display.begin();
+    display.clear();
+
+    if (storage.begin()) {
+        std::vector<String> books = storage.listTextFiles();
+        
+        if (books.size() > 0) {
+            // Open the first text file found in LittleFS
+            File f = LittleFS.open(books[0]);
+            if (f) {
+                // Read the first 150 bytes
+                char buffer[151] = {0};
+                f.readBytes(buffer, 150);
+                f.close();
+                
+                // Print those bytes to the screen
+                display.printText(String("Reading: ") + books[0] + "\n\n" + String(buffer));
+            }
+        } else {
+            display.printText("No .txt files found!\nUpload data folder using PIO.");
+        }
+    }
+}
+
+void loop() {}
