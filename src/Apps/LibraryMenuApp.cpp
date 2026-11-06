@@ -1,3 +1,10 @@
+/*
+Description: Builds the library menu and handles navigation between books, settings, and Wi-Fi transfer.
+Inputs: ctx->storage->listTextFiles(), selectedIndex, scrollOffset, globalTargetFile, transferApp, settingsApp, and libraryApp.
+Process: Scans .txt files, draws the menu, updates scrolling, and switches to the selected app when a button is pressed.
+Output: A visible library list and the correct app launch for the selected item.
+*/
+
 #include "LibraryMenuApp.h"
 #include "DisplayController.h" 
 #include "StorageManager.h"    // Required to access the storage HAL
@@ -5,11 +12,13 @@
 #include "ReaderApp.h" 
 #include "SleepApp.h"
 #include "TransferApp.h"
+#include "SettingsApp.h"
 
 extern ReaderApp* readerApp; 
 extern String globalTargetFile;
 extern SleepApp* sleepApp;
 extern TransferApp* transferApp;
+extern SettingsApp* settingsApp;
 
 static bool fullRefreshNextDraw = false;
 
@@ -26,7 +35,9 @@ void LibraryMenuApp::onStart() {
 }
 
 void LibraryMenuApp::onLoop() {
-    // UI logic is event-driven
+    if (ctx->display->isBusy()) {
+        return; 
+    }
 }
 
 void LibraryMenuApp::onExit() {
@@ -43,6 +54,7 @@ void LibraryMenuApp::scanFiles() {
         fileList.push_back("No .txt files found");
     }
     fileList.insert(fileList.begin(), "[ Wi-Fi Transfer ]");
+    fileList.insert(fileList.begin() + 1, "[ Settings ]");
 }
 
 void LibraryMenuApp::drawMenu() {
@@ -55,7 +67,7 @@ void LibraryMenuApp::drawMenu() {
     
     // 1. Calculate how many characters fit on the screen
     int screenWidth = ctx->display->getWidth();
-    int charWidth = 11; 
+    int charWidth = FONT_CHAR_WIDTH;
     int maxLineChars = screenWidth / charWidth;
     int maxFileNameChars = maxLineChars - 2; // Reserve 2 spaces for the "> " cursor
 
@@ -68,7 +80,7 @@ void LibraryMenuApp::drawMenu() {
         ctx->display->drawString(0, ctx->display->getHeight() - 20, stats); 
         
         int cursorY = 50;
-        int itemHeight = 25;
+        int itemHeight = LIBRARY_MENU_ITEM_HEIGHT;
 
         for (int i = scrollOffset; i < std::min((int)fileList.size(), scrollOffset + maxVisibleItems); i++) {
             String fileName = fileList[i];
@@ -89,7 +101,6 @@ void LibraryMenuApp::drawMenu() {
 }
 
 void LibraryMenuApp::onButtonEvent(int btnId, int eventType) {
-    // Assumes eventType 1 is mapped to a SINGLE CLICK in your InputController
     if (eventType != 0) return; 
 
     if (btnId == 1) {
@@ -116,13 +127,15 @@ void LibraryMenuApp::onButtonEvent(int btnId, int eventType) {
     else if (btnId == 4) { 
         // SELECT
         
-        if (fileList.empty()) return; // Safety check just in case
+        if (fileList.empty()) return;
 
         // 1. Handle Wi-Fi Transfer (Always forced to index 0 in scanFiles)
         if (selectedIndex == 0) {
             ctx->appManager->switchApp(transferApp);
         }
-        // 2. Prevent opening the placeholder if the library is empty
+        else if (selectedIndex == 1) {
+            ctx->appManager->switchApp(settingsApp);
+        }
         else if (fileList[selectedIndex] == "No .txt files found") {
             // Do nothing, it's just a message
             return; 

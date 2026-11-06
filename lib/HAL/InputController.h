@@ -1,3 +1,10 @@
+/*
+Description: Declares the button input layer that translates hardware presses into app events.
+Inputs: BTN_1 through BTN_4 from config.h and the event callback from AppManager.cpp.
+Process: Wraps the OneButton library and forwards click and long-press actions as logical app events.
+Output: triggerEvent() calls with button IDs and event types like EVENT_CLICK or EVENT_LONG_PRESS.
+*/
+
 #pragma once
 #include "config.h"
 #include <OneButton.h>

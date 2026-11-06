@@ -1,8 +1,9 @@
-/**
- * Serves as the blueprint for all UI states (e.g., ReaderApp, LibraryMenuApp).
- * Enforces standardized execution callbacks (onStart, onLoop, onButtonEvent, onExit)
- * and grants derived apps access to shared hardware peripherals via SystemContext.
- */
+/*
+Description: Defines the shared base class for every app screen in the reader.
+Inputs: SystemContext* ctx and the app lifecycle methods from each screen.
+Process: Gives each app a common startup, loop, button, exit, and redraw interface.
+Output: A consistent app structure so AppManager.cpp can switch between screens safely.
+*/
 
 #pragma once
 #include "SystemContext.h"
@@ -20,4 +21,7 @@ public:
     virtual void onLoop() = 0;
     virtual void onButtonEvent(int btnId, int eventType) = 0; 
     virtual void onExit() = 0;
+    virtual void prepareForSleep() {} 
+    virtual void forceRedraw() {}
+    virtual void setCustomMessage(String msg) {}
 };

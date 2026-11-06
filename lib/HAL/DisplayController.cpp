@@ -1,8 +1,14 @@
+/*
+Description: Handles all E-Ink screen setup, drawing, and page refresh operations.
+Inputs: EPD_CS, EPD_DC, EPD_RST, EPD_BUSY, plus text, bitmap, and layout values from DisplayController.h and config.h.
+Process: Sets up SPI, draws menus and reader pages, and refreshes the panel using full or partial updates.
+Output: Clean screen updates and text rendering for the app UI and book pages.
+*/
+
 #include "DisplayController.h"
 #include <SPI.h>
 #include <vector>
 
-// 1. Include BOTH the regular and oblique (italic) versions of the font
 #include <Fonts/FreeMono9pt7b.h>
 #include <Fonts/FreeMonoOblique9pt7b.h> 
 
@@ -18,15 +24,12 @@ void DisplayController::configureSPI() {
 
 void DisplayController::begin() {
     configureSPI();
-    epd.init(115200, true, 2, false); 
+    epd.init(SERIAL_BAUD_RATE, true, DISPLAY_RESET_DURATION_MS, false);
     epd.setTextColor(GxEPD_BLACK);
     epd.setTextWrap(false);
 }
 
-// ==========================================
 // Paging & Drawing Abstractions
-// ==========================================
-
 void DisplayController::startFullUpdate() {
     epd.setFullWindow();
     epd.firstPage();
@@ -66,10 +69,8 @@ int DisplayController::getWidth() {
 int DisplayController::getHeight() {
     return epd.height();
 }
-// ==========================================
-// Consolidated Refresh Routines
-// ==========================================
 
+// Consolidated Refresh Routines
 void DisplayController::clear() {
     startFullUpdate();
     do { 
@@ -97,10 +98,7 @@ void DisplayController::printTextFast(const String& text) {
     } while (nextPage());
 }
 
-// ==========================================
 // Reader Layout Engine
-// ==========================================
-
 uint32_t DisplayController::printPageDynamic(const String& text, bool fastRefresh) {
     int maxWidth = epd.width() - (MARGIN_X * 2);
     int maxHeight = epd.height() - MARGIN_Y;
@@ -108,9 +106,9 @@ uint32_t DisplayController::printPageDynamic(const String& text, bool fastRefres
     epd.setFont(&FreeMono9pt7b);
     epd.setTextSize(1);
     
-    int charWidth = 11; 
-    int w_space = 6; 
-    int lineHeight = 20; 
+    int charWidth = FONT_CHAR_WIDTH;
+    int w_space = READER_WORD_SPACE_WIDTH;
+    int lineHeight = FONT_LINE_HEIGHT;
     int cursorY = MARGIN_Y + 14; 
     
     uint32_t bytesConsumed = 0;
@@ -271,13 +269,11 @@ uint32_t DisplayController::printPageDynamic(const String& text, bool fastRefres
         bytesConsumed = i; 
     }
     
-    // --- REFACTORED RENDERING PHASE ---
-    
     if (!fastRefresh) {
-        clear(); // Reuses your clean full-refresh abstraction
+        clear();
     }
 
-    startPartialUpdate(); // Uses the new partial update wrapper
+    startPartialUpdate(); 
     
     do {
         fillWhite();
@@ -285,10 +281,14 @@ uint32_t DisplayController::printPageDynamic(const String& text, bool fastRefres
             if (cmd.italic) epd.setFont(&FreeMonoOblique9pt7b);
             else epd.setFont(&FreeMono9pt7b);
             
-            drawString(cmd.x, cmd.y, cmd.word); // Reuses your drawString abstraction
+            drawString(cmd.x, cmd.y, cmd.word);
         }
     } while (nextPage());
     
     epd.setFont(); 
     return bytesConsumed;
+}
+
+bool DisplayController::isBusy() {
+    return digitalRead(EPD_BUSY) == LOW;
 }
