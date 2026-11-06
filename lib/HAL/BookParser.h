@@ -1,3 +1,10 @@
+/*
+Description: Declares the book-reading helper used to open a text file and track its position.
+Inputs: filename, startOffset, currentFile, currentOffset, fileSize, and READER_CHUNK_SIZE_BYTES.
+Process: Stores the selected file and its reading position so callers can load chunks safely.
+Output: Methods to open, read, and move through the file while keeping file state available.
+*/
+
 #pragma once
 #include "config.h"
 #include <LittleFS.h>
@@ -8,8 +15,7 @@ private:
     uint32_t currentOffset = 0;
     uint32_t fileSize = 0;
     
-    // Increased massively to guarantee we always have enough text to fill the screen
-    const int CHUNK_SIZE = 1500; 
+    const int CHUNK_SIZE = READER_CHUNK_SIZE_BYTES;
 
 public:
     BookParser();

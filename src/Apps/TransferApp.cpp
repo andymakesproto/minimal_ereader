@@ -1,12 +1,20 @@
+/*
+Description: Runs the Wi-Fi transfer screen for uploading .txt books to the reader.
+Inputs: WiFi AP settings, WebServer, activeWifiPassword, and button events from the transfer screen.
+Process: Creates the Wi-Fi page, handles uploads, and saves the password or file data through LittleFS.
+Output: New books are added to the library and the transfer page responds to user actions.
+*/
+
 #include "Apps/TransferApp.h"
 #include "Apps/LibraryMenuApp.h"
 #include "AppManager.h"
 #include "DisplayController.h"
+#include "StorageManager.h"
+#include "config.h"
 
 extern LibraryMenuApp* libraryApp;
 
-// Initialize the server on standard port 80
-TransferApp::TransferApp(SystemContext* context) : BaseApp(context), server(80) {}
+TransferApp::TransferApp(SystemContext* context) : BaseApp(context), server(TRANSFER_SERVER_PORT) {}
 
 // A lightweight HTML page embedded directly into the code
 String TransferApp::generateHTML() {
@@ -21,6 +29,10 @@ String TransferApp::generateHTML() {
     html += ".file-name{word-break: break-all; padding-right: 15px;}";
     html += ".btn{padding:10px 16px; border:none; border-radius:4px; cursor:pointer; font-size:16px;}";
     html += ".btn-upload{background:#000; color:#fff; width:100%; margin-top:10px;}";
+    html += ".wifi-password{margin-top:20px; text-align:left;}";
+    html += ".wifi-password input{box-sizing:border-box; width:100%; padding:10px; margin:8px 0;}";
+    html += ".btn-save{padding:8px 12px; background:#fff; border:1px solid #bbb; border-radius:4px; color:#444;}";
+    html += ".hint{font-size:13px; color:#666; line-height:1.4;}";
     html += ".btn-delete{background:transparent; color:#dc3545; text-decoration:none; font-size:14px; font-weight: bold; white-space:nowrap;}";
     html += "</style></head><body>";
     
@@ -29,6 +41,13 @@ String TransferApp::generateHTML() {
     html += "<form method='POST' action='/upload' enctype='multipart/form-data'>";
     html += "<input type='file' name='update' accept='.txt' required style='margin: 15px 0;'><br>";
     html += "<input type='submit' value='Upload to E-Reader' class='btn btn-upload'>";
+    html += "</form>";
+
+    html += "<form class='wifi-password' method='POST' action='/wifi-password'>";
+    html += "<h2>Wi-Fi password</h2>";
+    html += "<p class='hint'>Use 8-63 characters. The new password takes effect the next time Wi-Fi Transfer starts; this connection stays active.</p>";
+    html += "<input type='password' name='password' minlength='8' maxlength='63' required autocomplete='new-password' placeholder='New password'>";
+    html += "<button type='submit' class='btn-save'>Save password</button>";
     html += "</form>";
 
     html += "<h2 style='margin-top: 30px;'>Manage Books</h2>";
@@ -41,15 +60,19 @@ String TransferApp::generateHTML() {
     
     while (file) {
         if (!file.isDirectory()) {
-            hasFiles = true;
             String fileName = String(file.name());
-            String filePath = fileName.startsWith("/") ? fileName : "/" + fileName;
-            
-            html += "<div class='file-item'>";
-            html += "<span class='file-name'>" + fileName + "</span>";
-            // Adds a Javascript confirmation popup before deleting
-            html += "<a href='/delete?file=" + filePath + "' class='btn-delete' onclick=\"return confirm('Delete " + fileName + "?')\">Delete</a>";
-            html += "</div>";
+            String lowerFileName = fileName;
+            lowerFileName.toLowerCase();
+            if (!lowerFileName.endsWith(".meta")) {
+                hasFiles = true;
+                String filePath = fileName.startsWith("/") ? fileName : "/" + fileName;
+
+                html += "<div class='file-item'>";
+                html += "<span class='file-name'>" + fileName + "</span>";
+                // Adds a Javascript confirmation popup before deleting
+                html += "<a href='/delete?file=" + filePath + "' class='btn-delete' onclick=\"return confirm('Delete " + fileName + "?')\">Delete</a>";
+                html += "</div>";
+            }
         }
         file.close();
         file = root.openNextFile();
@@ -68,11 +91,13 @@ String TransferApp::generateHTML() {
 void TransferApp::setupWebServer() {
     // Route 1: Serve the dynamic dashboard
     server.on("/", HTTP_GET, [this]() {
+        ctx->resetActivityTimer(); // Reset timer on page load
         server.send(200, "text/html", generateHTML());
     });
 
     // Route 2: Handle deletions
     server.on("/delete", HTTP_GET, [this]() {
+        ctx->resetActivityTimer(); // Reset timer on deletion request
         if (server.hasArg("file")) {
             String filename = server.arg("file");
             LittleFS.remove(filename);
@@ -82,13 +107,37 @@ void TransferApp::setupWebServer() {
         server.send(303);
     });
 
-    // Route 3: Handle uploads (UPDATED)
+    server.on("/wifi-password", HTTP_POST, [this]() {
+        ctx->resetActivityTimer();
+        String password = server.arg("password");
+        if (password.length() < 8 || password.length() > 63) {
+            server.send(400, "text/html",
+                "<!DOCTYPE html><html><body><p>Password must be 8-63 characters.</p><a href='/'>Back</a></body></html>");
+            return;
+        }
+
+        if (!ctx->storage->saveTransferWifiPassword(password)) {
+            server.send(500, "text/html",
+                "<!DOCTYPE html><html><body><p>Could not save the password. Please try again.</p><a href='/'>Back</a></body></html>");
+            return;
+        }
+
+        server.send(200, "text/html",
+            "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head>"
+            "<body><p>Password saved. It will take effect the next time Wi-Fi Transfer starts. "
+            "Your current connection remains active.</p><a href='/'>Back to transfer</a></body></html>");
+    });
+
+    // Route 3: Handle uploads
     server.on("/upload", HTTP_POST, [this]() {
         // Instead of a 303 header which breaks Safari, we send a standard 200 OK 
         // with an HTML tag that forces the browser to reload the page after 1 second.
         server.sendHeader("Connection", "close");
         server.send(200, "text/html", "<meta http-equiv='refresh' content='1; url=/' /><body><h2>Success! Reloading...</h2></body>");
     }, [this]() {
+        
+        ctx->resetActivityTimer(); // Keep awake during file upload chunks
+        
         HTTPUpload& upload = server.upload();
         
         if (upload.status == UPLOAD_FILE_START) {
@@ -125,8 +174,8 @@ void TransferApp::setupWebServer() {
             }
 
             // 5. Cap filename length at 20 chars max (plus extension)
-            if (safeName.length() > 20) {
-                safeName = safeName.substring(0, 20);
+            if (safeName.length() > TRANSFER_MAX_BOOK_FILENAME_LENGTH) {
+                safeName = safeName.substring(0, TRANSFER_MAX_BOOK_FILENAME_LENGTH);
             }
 
             safeName = "/" + safeName + ext;
@@ -135,17 +184,17 @@ void TransferApp::setupWebServer() {
             uploadFile = LittleFS.open(safeName, FILE_WRITE);
             
         } 
-        // 7. WRITE THE INCOMING FILE CHUNKS (Missing from your code)
+        // 7. WRITE THE INCOMING FILE CHUNKS
         else if (upload.status == UPLOAD_FILE_WRITE) {
             if (uploadFile) {
                 uploadFile.write(upload.buf, upload.currentSize);
             }
         } 
-        // 8. CLOSE AND DESTROY THE LOCK TO FIX THE DELETE BUG (Missing from your code)
+        // 8. CLOSE AND DESTROY THE LOCK
         else if (upload.status == UPLOAD_FILE_END || upload.status == UPLOAD_FILE_ABORTED) {
             if (uploadFile) {
                 uploadFile.close();
-                // CRITICAL FIX: Overwrite the object to force LittleFS to release the file lock
+                // Overwrite the object to force LittleFS to release the file lock
                 uploadFile = File(); 
             }
         }
@@ -154,8 +203,9 @@ void TransferApp::setupWebServer() {
 
 void TransferApp::onStart() {
     // 1. Turn on WiFi AP Mode
+    activeWifiPassword = ctx->storage->loadTransferWifiPassword(TRANSFER_WIFI_PASSWORD);
     WiFi.mode(WIFI_AP);
-    WiFi.softAP("MinimalReader", "12345678"); // SSID and Password
+    WiFi.softAP(TRANSFER_WIFI_SSID, activeWifiPassword.c_str());
     
     // 2. Start the Server
     setupWebServer();
@@ -167,17 +217,28 @@ void TransferApp::onStart() {
         ctx->display->fillWhite();
         ctx->display->setMenuFont();
         
-        ctx->display->drawString(0, 30, "Wi-Fi Active");
-        ctx->display->drawString(0, 80, "Network:");
-        ctx->display->drawString(0, 110, "MinimalReader");
-        ctx->display->drawString(0, 160, "Password:");
-        ctx->display->drawString(0, 190, "12345678");
+        ctx->display->drawString(8, 30, "Wi-Fi Active");
+        ctx->display->drawString(8, 80, "Network:");
+        ctx->display->drawString(8, 110, TRANSFER_WIFI_SSID);
+        ctx->display->drawString(8, 160, "Password:");
+        int passwordCharsPerLine = (ctx->display->getWidth() - 16) / FONT_CHAR_WIDTH;
+        if (passwordCharsPerLine < 1) {
+            passwordCharsPerLine = 1;
+        }
+        int passwordLines = 0;
+        for (size_t offset = 0; offset < activeWifiPassword.length(); offset += passwordCharsPerLine) {
+            ctx->display->drawString(
+                8,
+                190 + (passwordLines * 25),
+                activeWifiPassword.substring(offset, offset + passwordCharsPerLine));
+            ++passwordLines;
+        }
         
         // The default IP for ESP32 AP mode is always 192.168.4.1
-        ctx->display->drawString(0, 240, "IP: 192.168.4.1");
+        ctx->display->drawString(8, 190 + (passwordLines * 25) + 15, "IP: 192.168.4.1");
         
         int bottomY = ctx->display->getHeight() - 20;
-        ctx->display->drawString(0, bottomY, "< Back (Btn 1)");
+        ctx->display->drawString(8, bottomY, "< Back (Btn 1)");
         
     } while (ctx->display->nextPage());
 }
@@ -201,4 +262,9 @@ void TransferApp::onExit() {
     server.stop();
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_OFF);
+}
+
+void TransferApp::prepareForSleep() {
+    onExit();
+    Serial.println("TransferApp: Prepared for Deep Sleep. Wi-Fi killed.");
 }

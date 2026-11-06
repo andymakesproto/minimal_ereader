@@ -1,3 +1,10 @@
+/*
+Description: Opens a text file and reads it in chunks for the reader.
+Inputs: filename, startOffset, and the LittleFS file system in BookParser.h.
+Process: Opens the book, tracks the current file position, and returns a chunk of raw text.
+Output: A string chunk plus file size and offset values used by the reader.
+*/
+
 #include "BookParser.h"
 
 BookParser::BookParser() {}

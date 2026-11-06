@@ -1,3 +1,10 @@
+/*
+Description: Starts the reader, initializes the hardware, and launches the main app flow.
+Inputs: config.h values like SERIAL_BAUD_RATE, storageCtrl, displayCtrl, inputCtrl, bookParser, and the app objects in AppManager.h.
+Process: Mounts storage, sets up the display and buttons, builds SystemContext, allocates app screens, and switches to the library menu.
+Output: The device boots into the library UI and waits for user input.
+*/
+
 #include <Arduino.h>
 
 // --- Core & Config ---
@@ -10,17 +17,16 @@
 #include "StorageManager.h"
 #include "InputController.h"
 #include "BookParser.h"
-// #include "PowerController.h" // Uncomment when implemented
+// #include "PowerController.h" // Hardware is not yet implemented, so this is commented out for now
 
 // --- Application Layer ---
 #include "Apps/LibraryMenuApp.h"
 #include "Apps/ReaderApp.h"
 #include "Apps/SleepApp.h"
 #include "Apps/TransferApp.h"
+#include "Apps/SettingsApp.h"
 
-// ==========================================
-// 1. GLOBAL INSTANCES (Hardware & Core)
-// ==========================================
+// Global system context and hardware instances
 DisplayController displayCtrl;
 StorageManager storageCtrl;
 InputController inputCtrl;
@@ -28,29 +34,61 @@ BookParser bookParser;
 AppManager appManager;
 
 // PowerController powerCtrl;
-
 SystemContext systemCtx;
 
-// ==========================================
-// 2. EXTERN VARIABLES (For App Routing)
-// ==========================================
+// Extern
 String globalTargetFile = "";
 LibraryMenuApp* libraryApp = nullptr;
 ReaderApp* readerApp = nullptr;
 SleepApp* sleepApp = nullptr;
 TransferApp* transferApp = nullptr;
-// ==========================================
-// 3. MAIN SETUP
-// ==========================================
+SettingsApp* settingsApp = nullptr;
+
+// Main setup
 void setup() {
-    Serial.begin(115200);
-    delay(1000); // Brief pause for serial monitor connection
+    Serial.begin(SERIAL_BAUD_RATE);
+
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+        
+        pinMode(BTN_4, INPUT_PULLUP);
+        delay(WAKE_BUTTON_STABILIZE_MS); // Let voltage stabilize
+        
+        unsigned long wakeStart = millis();
+        bool heldLongEnough = true;
+        
+        while (millis() - wakeStart < WAKE_BUTTON_HOLD_CONFIRM_MS) {
+            if (digitalRead(BTN_4) == HIGH) { 
+                heldLongEnough = false;
+                break;
+            }
+            delay(BUTTON_POLL_INTERVAL_MS);
+        }
+        
+        if (!heldLongEnough) {
+            esp_sleep_enable_ext0_wakeup((gpio_num_t)BTN_4, 0);
+            esp_deep_sleep_start();
+        }
+    }
+    
+    pinMode(BTN_1, INPUT_PULLUP);
+    pinMode(BTN_2, INPUT_PULLUP);
+    pinMode(BTN_3, INPUT_PULLUP);
+    pinMode(BTN_4, INPUT_PULLUP);
+    while(digitalRead(BTN_1) == LOW || digitalRead(BTN_2) == LOW || 
+          digitalRead(BTN_3) == LOW || digitalRead(BTN_4) == LOW) {
+        delay(BUTTON_POLL_INTERVAL_MS); // Trap execution here until hands are off
+    }
+
+    delay(STARTUP_SERIAL_MONITOR_DELAY_MS); // Brief pause for serial monitor connection
 
     // --- Initialize Storage ---
     if (!storageCtrl.begin()) {
-        Serial.println("CRITICAL ERROR: StorageManager failed to initialize.");
-        // We do not halt execution here, but files won't load.
+        Serial.println("StorageManager failed to initialize.");
     }
+    systemCtx.inactivitySleepTimeoutMs =
+        storageCtrl.loadInactivitySleepTimeout(INACTIVITY_SLEEP_MS);
+    systemCtx.readerAutoSavePageThreshold =
+        storageCtrl.loadReaderAutoSavePageThreshold(READER_AUTO_SAVE_PAGE_THRESHOLD);
 
     // --- Initialize Hardware ---
     displayCtrl.begin();
@@ -64,33 +102,28 @@ void setup() {
     systemCtx.appManager = &appManager;
     systemCtx.power   = nullptr; // Set to &powerCtrl when implemented
 
-    // --- Bind Hardware Events to Application State ---
-    // This lambda cleanly routes OneButton ticks to the active UI state
-    inputCtrl.setEventCallback([](int btnId, int eventType) {
-        appManager.handleButtonEvent(btnId, eventType);
-    });
-
     // --- Allocate Applications ---
     libraryApp = new LibraryMenuApp(&systemCtx);
     readerApp  = new ReaderApp(&systemCtx);
     sleepApp   = new SleepApp(&systemCtx);
     transferApp = new TransferApp(&systemCtx);
+    settingsApp = new SettingsApp(&systemCtx);
     
-    // --- Boot the System ---
-    appManager.switchApp(sleepApp);
+    // --- Initialize App Manager ---
+    appManager.setContext(&systemCtx);
+    appManager.setSleepApp(sleepApp);
+    systemCtx.resetActivityTimer();
 
     // --- Bind Hardware Events to Application State ---
     inputCtrl.setEventCallback([](int btnId, int eventType) {
-        // ADD THIS LINE TO DEBUG:
-        Serial.printf("Hardware fired! Button: %d, EventType: %d\n", btnId, eventType);
-        
         appManager.handleButtonEvent(btnId, eventType);
     });
+    
+    // --- Boot the System ---
+    appManager.switchApp(libraryApp);
 }
 
-// ==========================================
-// 4. MAIN LOOP
-// ==========================================
+// Main loop
 void loop() {
     // 1. Tick the hardware button states
     inputCtrl.update();
@@ -98,8 +131,6 @@ void loop() {
     // 2. Tick the active application logic (if any)
     appManager.updateLoop();
 
-    systemCtx.appManager->onLoop();
-
     // Small yield to feed the ESP32 watchdog timer
-    delay(10);
+    delay(MAIN_LOOP_DELAY_MS);
 }
