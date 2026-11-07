@@ -1,6 +1,6 @@
 # Minimal E-Reader
 
-Minimal Reader is firmware for an ESP32-S3 e-reader with a 3.7-inch monochrome e-paper display. It lets you read plain-text books, save your reading progress, and transfer books over Wi-Fi.
+Minimal E-Reader is firmware for an ESP32-S3 e-reader with a 3.7-inch monochrome e-paper display. It lets you read plain-text books, save your reading progress, and transfer books over Wi-Fi.
 
 If you find Minimal E-Reader useful, you can [support its development on Ko-fi](https://ko-fi.com/andymakesproto). Thank you!
 
@@ -69,7 +69,7 @@ The repository includes sample `.txt` books in [`data/`](data/). To copy them to
 
 **Warning:** Uploading a filesystem image replaces the files on the device, including any books and reading progress stored there.
 
-## Use the reader
+## Using the reader
 
 The library opens on startup. The four buttons have these primary actions:
 
