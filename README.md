@@ -2,7 +2,7 @@
 
 Minimal E-Reader is firmware for an ESP32-S3 e-reader with a 3.7-inch monochrome e-paper display. It lets you read plain-text books, save your reading progress, and transfer books over Wi-Fi.
 
-If you find Minimal E-Reader useful, you can [support its development on Ko-fi](https://ko-fi.com/andymakesproto). Thank you!
+This project is in active development, and I plan to support it long-term. If you find Minimal E-Reader useful, you can [support its development on Ko-fi](https://ko-fi.com/andymakesproto). Thank you for your consideration!
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K2R3288SQP)
 
@@ -34,7 +34,7 @@ Recommended components:
 - [SS12F44 Slide Switch](https://s.click.aliexpress.com/e/_c2Ihgcin)
 - [5x7 Perfboard](https://s.click.aliexpress.com/e/_c2Ihgcin)
 - [30 AWG Silicone Wires](https://s.click.aliexpress.com/e/_c4Wn6jPz)
-- []
+- 100k Ohms Resistors
 
 ### Full build tutorial
 
