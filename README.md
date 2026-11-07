@@ -34,6 +34,7 @@ Recommended components:
 - [SS12F44 Slide Switch](https://s.click.aliexpress.com/e/_c2Ihgcin)
 - [5x7 Perfboard](https://s.click.aliexpress.com/e/_c2Ihgcin)
 - [30 AWG Silicone Wires](https://s.click.aliexpress.com/e/_c4Wn6jPz)
+- []
 
 ### Full build tutorial
 
