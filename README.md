@@ -4,6 +4,8 @@ Minimal E-Reader is firmware for an ESP32-S3 e-reader with a 3.7-inch monochrome
 
 If you find Minimal E-Reader useful, you can [support its development on Ko-fi](https://ko-fi.com/andymakesproto). Thank you!
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K2R3288SQP)
+
 ## Features
 
 - Read `.txt` books stored in the device's LittleFS flash filesystem.
