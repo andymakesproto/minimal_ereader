@@ -1,46 +1,18 @@
+# Firmware modules
 
-This directory is intended for project specific (private) libraries.
-PlatformIO will compile them to static libraries and link into the executable file.
+This directory contains the firmware's reusable core and hardware-abstraction modules. Application screens are implemented separately in `src/Apps/`.
 
-The source code of each library should be placed in a separate directory
-("lib/your_library_name/[Code]").
+## Core
 
-For example, see the structure of the following example libraries `Foo` and `Bar`:
+`Core/` defines the common app lifecycle and manages screen changes, button-event routing, inactivity warnings, and sleep behavior.
 
-|--lib
-|  |
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
-|  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |  |- library.json (optional. for custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
-|  |
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |
-|  |- README --> THIS FILE
-|
-|- platformio.ini
-|--src
-   |- main.c
+## Hardware abstraction layer
 
-Example contents of `src/main.c` using Foo and Bar:
-```
-#include <Foo.h>
-#include <Bar.h>
+`HAL/` provides the interfaces used by the app screens to work with device hardware and storage:
 
-int main (void)
-{
-  ...
-}
+- `DisplayController` initializes the e-paper panel and draws text and pages.
+- `InputController` reads the four buttons and forwards click and long-press events.
+- `StorageManager` accesses LittleFS files and saves bookmarks and user settings.
+- `BookParser` reads book text in chunks and tracks the current file offset.
 
-```
-
-The PlatformIO Library Dependency Finder will find automatically dependent
-libraries by scanning project source files.
-
-More information about PlatformIO Library Dependency Finder
-- https://docs.platformio.org/page/librarymanager/ldf.html
+Keep hardware-specific behavior in `HAL/` and shared app lifecycle or routing behavior in `Core/`. Include the module headers from application code as needed.
