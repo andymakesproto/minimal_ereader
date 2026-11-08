@@ -29,12 +29,12 @@ The firmware is designed for the **Seeed XIAO ESP32S3** and the **GxEPD2_370_GDE
 Recommended components:
 - [XIAO ESP32-S3 by Seeed Studio](https://s.click.aliexpress.com/e/_c2IvrVyJ)
 - [We Act Studio 3.7" E-paper Module Black & White](https://www.aliexpress.us/item/3256809525686527.html?channel=twinner)
-- [503048 800mAh LiPo Battery](https://s.click.aliexpress.com/e/_c4SsOrQF)
-- [6x6x4.3 Push Buttons](https://s.click.aliexpress.com/e/_c3AJGSvd)
-- [SS12F44 Slide Switch](https://s.click.aliexpress.com/e/_c2Ihgcin)
-- [5x7 Perfboard](https://s.click.aliexpress.com/e/_c2Ihgcin)
+- [One 503048 800mAh LiPo Battery](https://s.click.aliexpress.com/e/_c4SsOrQF)
+- [Four 6x6x4.3 Push Buttons](https://s.click.aliexpress.com/e/_c3AJGSvd)
+- [One SS12F44 Slide Switch](https://s.click.aliexpress.com/e/_c2Ihgcin)
+- [One 5x7 Perfboard](https://s.click.aliexpress.com/e/_c2Ihgcin)
 - [30 AWG Silicone Wires](https://s.click.aliexpress.com/e/_c4Wn6jPz)
-- 100k Ohms Resistors
+- Two 100k Ohms Resistors
 
 ### Full build tutorial
 
@@ -45,13 +45,23 @@ For step-by-step instructions on building the device, see my tutorial on Ko-fi.
 Follow these steps to install the firmware using Visual Studio Code and the PlatformIO extension. You do not need to edit any code.
 
 1. Download and install [Visual Studio Code](https://code.visualstudio.com/).
-2. In Visual Studio Code, open **Extensions** from the left-hand sidebar. Search for **PlatformIO IDE** and install the extension published by PlatformIO.
+2. In Visual Studio Code (VS Code), open **Extensions** from the left-hand sidebar. Search for **PlatformIO IDE** and install the extension published by PlatformIO.
 3. On GitHub, click the green **Code** button and select **Download ZIP**. Extract the ZIP file somewhere you can find it again.
 4. In Visual Studio Code, select **File → Open Folder...** and open the extracted project folder containing `platformio.ini`. If Visual Studio Code asks whether you trust the folder, select **Trust**.
 5. Wait for PlatformIO to finish setting itself up and install the project libraries. This may take a few minutes and requires an internet connection.
 6. Connect the XIAO ESP32S3 to your computer with a USB data cable. A charge-only cable will not work.
-7. In the PlatformIO sidebar, open **Project Tasks**, expand **seeed_xiao_esp32s3**, then **General**, and select **Upload**. PlatformIO will build the firmware and upload it to the connected board.
-8. When the upload finishes, the reader will restart. If PlatformIO asks you to select a serial port, choose the one for the XIAO ESP32S3.
+
+After completing setup steps 1–6 above, test the hardware before installing the firmware in step 7:
+- In the `src/` folder (which can be found on the left sidebar in VS Code), rename `main.cpp` to `main.txt`. This temporary disables our main firmware so that we can enable small tests.
+- Start with **Button test**. Rename `buttonTest.txt` to `main.cpp`.
+- Click **PlatformIO: Upload** (the right-arrow button in the lower-left corner of the VS Code window).
+- After uploading, open PlatformIO's Serial Monitor (the button looks like a command-line pointer in the lower-left corner of the window) and then press each push button. Button events should appear in the monitor. If they do not, check the buttons' wiring.
+- **Display test:** Rename `buttonTest.txt` from `main.cpp` back to `buttonTest.txt`, then rename `screenTest.txt` to `main.cpp`. After uploading, check that the e-ink display shows the test message. If it does not, check the display's wiring.
+- When done, rename `screenTest.txt` back to `screenTest.txt` and `main.txt` back to `main.cpp` before installing the firmware.
+
+After successfully testing your hardware, you are ready to install the reader's firmware:
+7. Press **PlatformIO: Clean** (the trash-can icon), then click **PlatformIO: Upload**. PlatformIO will build the firmware and upload it to the connected board.
+8. When the upload finishes, the reader will restart and send you to the library, waiting for you to upload your first book!
 
 If the board is not detected, try a different USB cable or port. The initial setup and firmware build require an internet connection. The project uses the Arduino framework, and its libraries are listed in [`platformio.ini`](platformio.ini).
 
