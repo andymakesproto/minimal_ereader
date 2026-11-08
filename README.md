@@ -95,6 +95,10 @@ The library opens on startup. The four buttons have these primary actions:
 
 In the reader, press and hold button 4 to open the reading statistics and progress-reset options. The library also contains **Settings** and **Wi-Fi Transfer** entries. After a period of inactivity, the device displays a warning and then enters deep sleep. To wake it from deep sleep, press and hold button 4 for about one second.
 
+Note: In the event of a sudden power cutoff (e.g., depleted battery or when the slide switch is flipped), any unsaved reading progress will be lost. If you want to use the switch, make sure to return to the library first to trigger a progress save.
+
+To charge the battery, plug a USB-C cable connected to a charging adapter or a USB port into the USB-C port of the ESP32-S3. A single charge from zero to full for an 800mAh battery can take 6–8 hours because of the charging speed of the ESP.
+
 ## Project layout
 
 | Path | Purpose |
