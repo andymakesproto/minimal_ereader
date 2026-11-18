@@ -32,7 +32,7 @@ Recommended components:
 - [One 503048 800mAh LiPo Battery](https://s.click.aliexpress.com/e/_c4SsOrQF)
 - [Four 6x6x4.3 Push Buttons](https://s.click.aliexpress.com/e/_c3AJGSvd)
 - [One SS12F44 Slide Switch](https://s.click.aliexpress.com/e/_c2Ihgcin)
-- [One 5x7 Perfboard](https://s.click.aliexpress.com/e/_c2Ihgcin)
+- [One 5x7 Perfboard](https://s.click.aliexpress.com/e/_c3aGcpCj)
 - [30 AWG Silicone Wires](https://s.click.aliexpress.com/e/_c4Wn6jPz)
 - Two 100k Ohms Resistors
 
